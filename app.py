@@ -162,6 +162,7 @@ PAGES = [
     "🔀 Relationship Shapes",
     "🧭 PCA — All Features at Once",
     "⏱️ F2 as Time",
+    "🧩 Overall Hypothesis",
 ]
 page = st.sidebar.radio("Sections", PAGES)
 
@@ -264,9 +265,8 @@ elif page == "🧹 Data Quality":
         )
 
     insight_box(
-        "The dataset is already clean — no imputation, deduplication, or row-dropping is "
-        "needed before analysis. Any patterns we find later (bimodal distributions, outlier "
-        "clusters, correlations) reflect the real underlying process, not data-entry artifacts."
+        "The data is clean — nothing missing, nothing duplicated. That means everything we "
+        "find later on is a real pattern, not a mistake in the data."
     )
 
 # ============================================================================
@@ -305,11 +305,9 @@ elif page == "🗂️ Categorical Breakdown":
         st.plotly_chart(fig, use_container_width=True)
 
     insight_box(
-        "F1 is perfectly balanced — 26 rows for each of the 5 machines (M1–M5) — which looks "
-        "like a controlled sampling design rather than organic/random logging. F16 is "
-        "imbalanced (105 MOB vs 25 CPU rows), meaning MOB is the dominant device category. "
-        "Any comparison between MOB and CPU later on should keep this imbalance in mind — "
-        "CPU patterns are based on a much smaller sample."
+        "F1 is split evenly — 26 rows for each of the 5 machines. That looks planned, not "
+        "random. F16 is not even — 105 MOB rows vs only 25 CPU rows. So whenever we compare "
+        "MOB and CPU later, remember CPU has a lot less data behind it."
     )
 
 # ============================================================================
@@ -332,20 +330,19 @@ elif page == "📈 Numeric Distributions":
     ])
     groups = [BIMODAL_COLS, RIGHT_SKEW_COLS, LEFT_SKEW_COLS, UNIFORM_COLS, NORMAL_COLS]
     shape_msgs = [
-        "Bimodal distributions usually mean the sensor is capturing **two distinct operating states** "
-        "(e.g. healthy vs. degraded, or idle vs. active) rather than one continuous process. "
-        "Since F3, F4, F6, F7 are also near-perfectly correlated (see Feature Redundancy), "
-        "this is likely **one real signal** measured on different scales, not six.",
-        "Right-skewed distributions (most values low, a long tail of large values) are typical of "
-        "**event-driven or fault-related measurements** — normal operation clusters near zero, "
-        "and rare spikes pull the tail out. These are the columns most worth an outlier deep-dive.",
-        "F15 being left-skewed (most values high, a tail toward low values) suggests it measures "
-        "something that is **usually near a ceiling** (e.g. a health or utilization score) and "
-        "occasionally drops — the opposite pattern of the right-skewed group.",
-        "F14 being roughly uniform across its range suggests it isn't a natural sensor reading at "
-        "all — it looks more like a **cycling index, batch counter, or scheduled workload step**.",
-        "F18's roughly bell-shaped distribution suggests it is a **stable, calibrated baseline "
-        "measurement** with natural random variation around a machine-specific setpoint.",
+        "Two humps usually means two situations, not one steady process — like healthy vs. "
+        "broken, or on vs. off. Since F3, F4, F6 and F7 all move together perfectly (see the "
+        "Feature Redundancy tab), they're probably **one real signal repeated on different scales**, "
+        "not six different things.",
+        "Most values sit low, with a few very high spikes. This is what you'd expect from "
+        "**rare events or faults** — things are normal most of the time, then something goes "
+        "wrong and the number jumps. These are the columns worth checking for outliers.",
+        "F15 is the opposite — usually high, with occasional low dips. This looks like a "
+        "**health or usage score that's normally near its max** and drops when something's off.",
+        "F14 is spread out evenly with no real peak. That's unusual for a sensor reading — it "
+        "looks more like a **counter or a repeating schedule/cycle** than something being measured.",
+        "F18 forms a clean bell curve, which usually means it's a **stable baseline reading** "
+        "with normal small ups and downs, not something reacting to events.",
     ]
 
     for tab, cols, msg in zip(tabs, groups, shape_msgs):
@@ -381,10 +378,10 @@ elif page == "📈 Numeric Distributions":
     sp = style_fig(sp, height=800)
     st.plotly_chart(sp, use_container_width=True)
     insight_box(
-        "F8, F9, F10, F11, F12, F13 and F17 all show points well above the box — these are the "
-        "right-skewed columns confirming outliers. F15 shows a few low outliers, consistent with "
-        "its left skew. F3, F4, F5, F6, F7, F14, F18 and F19 show no extreme outliers, meaning "
-        "their spread is well-behaved even though some of them are bimodal."
+        "F8, F9, F10, F11, F12, F13 and F17 all have points shooting up above the box — these "
+        "are the columns with real outliers. F15 has a few low outliers, which matches its shape. "
+        "F3, F4, F5, F6, F7, F14, F18 and F19 have no extreme values at all — well-behaved, "
+        "even the ones with two humps."
     )
 
 # ============================================================================
@@ -413,17 +410,15 @@ elif page == "🚨 Outliers by Machine":
         st.plotly_chart(fig, use_container_width=True)
 
     insight_box(
-        "**F8, F9, F10:** M2 produces the most extreme spikes in all three (up to ~250,000 in F8, "
-        "~6,500 in F9, ~670 in F10), while M4 stays compressed near zero. This points to M2 as a "
-        "machine with occasional severe events — worth flagging for maintenance or fault review. "
+        "**F8, F9, F10:** Machine M2 has the biggest spikes in all three, while M4 stays low and "
+        "steady the whole time. This points to **M2 having occasional serious problems** — the "
+        "first machine worth checking. "
         "<br><br>"
-        "**F11:** the pattern flips — M4 is the one with a huge spread (~160 to ~630) while the "
-        "other four machines stay tightly bounded below ~180, suggesting F11 captures something "
-        "M4-specific (e.g. a different load profile or a sensor calibration difference). "
+        "**F11:** this time it's the opposite — **M4** is the one that swings wildly, while the "
+        "other four machines barely move. So F11 seems to be picking up something specific to M4. "
         "<br><br>"
-        "**F12 & F13:** identical relative shapes across all groups, both dominated by the same "
-        "M2 elevation — strong evidence F12 and F13 are the **same underlying quantity on two "
-        "scales**, both driven by the same M2 events seen in F8–F10."
+        "**F12 & F13:** these two look almost identical, and both spike with M2 — strong evidence "
+        "they're **the same measurement, just written down twice on different scales**."
     )
 
 # ============================================================================
@@ -464,17 +459,13 @@ elif page == "🔗 Feature Redundancy":
         st.plotly_chart(fig, use_container_width=True)
 
     insight_box(
-        "F3, F4, F6, F7 form a near-perfect correlation block (r ≈ 1.00) confirmed by a high "
-        "mutual-information block too — almost certainly the same signal on different scales. "
-        "F12/F13 are essentially identical (r = 1.00, MI ≈ 3.55, the highest in the matrix). "
-        "F8, F9, F10 move together tightly, and F11 shares meaningful MI with that group without "
-        "being perfectly correlated — suggesting it's *related* but not a pure duplicate. "
-        "F14–F15 and F18–F19 are strongly related in both matrices but not identical, which is "
-        "exactly the signature of a **non-linear or stratified relationship** rather than a "
-        "simple rescaling — confirmed visually in the next section. "
-        "F17 stands out as the most **isolated** feature, sharing very little information with "
-        "everything else — it likely captures something genuinely independent of the rest of the "
-        "dataset."
+        "F3, F4, F6 and F7 move together almost perfectly — they're likely **the same signal, "
+        "recorded differently**. F12 and F13 are basically identical twins (the strongest match "
+        "in the whole matrix). F8, F9 and F10 also travel together, and F11 is related to them "
+        "but not a duplicate. F14/F15 and F18/F19 are connected but not copies of each other — "
+        "something a bit more complex links them, which we'll see clearly in the next section. "
+        "F17 stands alone — it barely relates to anything else, so it's probably measuring "
+        "something genuinely different from the rest of the dataset."
     )
 
     st.markdown("### Quantifying the strongest pairs")
@@ -514,11 +505,11 @@ elif page == "🔀 Relationship Shapes":
     st.plotly_chart(sp, use_container_width=True)
 
     insight_box(
-        "F3–F4, F3–F6, F3–F7, F8–F9, F8–F10, F9–F10 and F12–F13 all fall almost exactly on a "
-        "straight line — the visual signature of a correlation near 1.00, confirming those are "
-        "scaled duplicates. F14 vs F15 traces a clear **curve** rather than a line — a genuine "
-        "non-linear relationship, not a duplicate. F18 vs F19 splits into **two parallel lines** "
-        "— a strong sign that a hidden category is separating the data into two regimes."
+        "F3–F4, F3–F6, F3–F7, F8–F9, F8–F10, F9–F10 and F12–F13 all form clean straight lines — "
+        "confirming they're duplicates of each other. F14 vs F15 forms a **curve**, not a "
+        "straight line — a real relationship, just not a simple copy. F18 vs F19 splits into "
+        "**two separate parallel lines** — usually a sign that a hidden category is splitting "
+        "the data into two groups."
     )
 
     st.markdown("### What explains the F18/F19 split and the F3 bimodal peaks?")
@@ -544,12 +535,10 @@ elif page == "🔀 Relationship Shapes":
         st.plotly_chart(fig, use_container_width=True)
 
     insight_box(
-        "F16 **does** explain the F18/F19 split: CPU rows sit strictly on the upper line, while "
-        "MOB rows split across both the upper and a lower offset line — meaning F16 (or a factor "
-        "correlated with it) drives part of that relationship. F16 does **not** explain F3's "
-        "bimodal shape — MOB and CPU show the exact same two peaks (~95 and ~15), so whatever "
-        "creates that split in F3 is a **different, still-hidden factor** — a good candidate for "
-        "further investigation beyond this dataset."
+        "F16 **does** explain the F18/F19 split — CPU rows sit only on the top line, while MOB "
+        "rows are spread across both lines. So F16 (or something tied to it) is behind that split. "
+        "But F16 does **not** explain F3's two peaks — MOB and CPU both show the exact same "
+        "two-hump pattern, so something else, still unknown, is causing that one."
     )
 
 # ============================================================================
@@ -588,13 +577,12 @@ elif page == "🧭 PCA — All Features at Once":
     st.plotly_chart(fig, use_container_width=True)
 
     insight_box(
-        f"PC1 and PC2 together already explain **{var1+var2:.1f}%** of the variation across all "
-        "16 numeric columns — with only 16% of the original dimensionality (2 out of 16 axes). "
-        "That confirms what the correlation and MI matrices already suggested: a large chunk of "
-        "these columns are redundant, scaled copies of a smaller set of true underlying signals. "
-        "When colored by F16, CPU and MOB points separate into visibly different regions — F16 "
-        "is a **real, structural difference** in the data, not an arbitrary label. Try switching "
-        "the color to F1 to see whether individual machines separate the same way."
+        f"Just 2 combined 'summary' axes — out of the original 16 columns — capture "
+        f"**{var1+var2:.1f}%** of everything happening in the data. That's a strong sign a lot of "
+        "those 16 columns are repeating the same information on different scales, exactly what "
+        "the redundancy sections found. When colored by F16, CPU and MOB form separate clusters "
+        "— so F16 is a **real structural difference**, not just a label. Switch the color to F1 "
+        "to see whether individual machines cluster too."
     )
 
 # ============================================================================
@@ -627,23 +615,107 @@ elif page == "⏱️ F2 as Time":
         st.plotly_chart(fig, use_container_width=True)
 
     insight_box(
-        "**F3 (system status):** M1 and M2 stay consistently healthy around ~95 throughout the "
-        "sequence. M3 and M5 drop sharply and permanently around step 11 — consistent with a "
-        "**permanent failure or shutdown event**. M4 oscillates — periodic dips and recoveries, "
-        "more consistent with **intermittent faults** than a single failure. "
+        "**F3 (status):** M1 and M2 stay healthy the whole time, around 95. M3 and M5 drop hard "
+        "around step 11 and never come back up — that looks like a **breakdown that doesn't "
+        "recover**. M4 keeps going up and down — more like a **recurring problem** than one big "
+        "failure. "
         "<br><br>"
-        "**F14 (batch workload):** every machine follows the *same* 4–5 step wave, in sync. "
-        "Since this pattern is identical across independent machines, it's most likely driven by "
-        "a **shared external process or scheduling cycle** rather than anything machine-specific. "
+        "**F14 (workload):** every machine rises and falls at the *exact same steps*. Independent "
+        "machines wouldn't naturally line up like that on their own — this is probably a "
+        "**shared schedule or outside workload** hitting all of them together. "
         "<br><br>"
-        "**F18 (machine baseline):** each machine sits at its own fixed offset (M5 highest, M3 "
-        "lowest) and all of them spike in sync with F14's workload peaks — suggesting F18 is a "
-        "**per-machine calibration/load baseline** that responds to the same shared workload "
-        "driving F14. "
+        "**F18 (baseline):** each machine sits at its own steady level (M5 highest, M3 lowest), "
+        "and all of them spike at the same moments F14 spikes — so F18 looks like **each "
+        "machine's personal baseline reacting to that same shared workload**. "
         "<br><br>"
-        "Put together, this section is the strongest evidence that F2 genuinely encodes time, "
-        "and that the machines share an external workload cycle while still failing or degrading "
-        "independently."
+        "Put together: this is the strongest sign that F2 really does represent time, and that "
+        "the machines share an outside workload even while some of them fail on their own "
+        "separate timeline."
+    )
+
+# ============================================================================
+# PAGE 10 — OVERALL HYPOTHESIS
+# ============================================================================
+elif page == "🧩 Overall Hypothesis":
+    st.title("🧩 Putting It All Together — What Is This Data Actually Tracking?")
+    why_box(
+        "Every earlier tab looked at one piece of the puzzle on its own. This tab lines up "
+        "all of those pieces side by side to answer the bigger question: what real-world "
+        "thing was this dataset built to measure? This is a **hypothesis** — the "
+        "best-supported explanation given what we found — not a confirmed fact, since the "
+        "column names are anonymized and there's no metadata to check it against."
+    )
+
+    st.markdown("### The short version")
+    st.markdown(
+        f"""
+        <div class="insight-box" style="font-size:1.05rem;">
+        This looks like a <b>machine health monitoring log</b>: {int(df.shape[0])} readings taken
+        from <b>5 machines (F1)</b> at repeated <b>time steps (F2)</b>, tracking each machine's
+        operating status, workload, and warning signs over time — similar to what a system would
+        log to watch for hardware faults or memory/resource problems before they cause a
+        breakdown.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### How each piece supports this")
+    st.markdown(
+        """
+        | Column(s) | Most likely role | Based on |
+        |---|---|---|
+        | **F1** | Machine ID (5 separate machines) | Perfectly even 26 rows each — a tracking ID, not a random category |
+        | **F2** | Time step / reading number | Sequential labels (T1, T2, T3…); features change in a consistent order when sorted by it |
+        | **F3, F4, F6, F7** | Machine health / status score | Two-hump shape (healthy vs. degraded); drops permanently for M3 and M5 partway through |
+        | **F8, F9, F10, F12, F13** | Fault or error counters | Normally near zero, occasional huge spikes — concentrated on machine M2 |
+        | **F11** | Machine-specific stress signal | Only M4 shows a wide spread — looks tied to that one machine's load |
+        | **F14** | Shared workload / job cycle | Same up-down wave on every machine at the same steps — a schedule, not a sensor |
+        | **F18** | Per-machine resource baseline (e.g. memory/load level) | Each machine has its own steady level, but all spike together with F14's workload |
+        | **F15, F17** | Independent health/resource readings | Don't match the redundant groups above — separate signals |
+        | **F16** | Device or monitoring category (MOB / CPU) | Splits F18 vs F19 into two clean lines — a real structural difference |
+        """
+    )
+
+    st.markdown("### The story this tells")
+    st.markdown(
+        """
+        <div class="insight-box">
+        Reading the sections in order: each row is <b>one machine, at one point in time</b>.
+        Most of the 16 numeric columns are not 16 separate things — they're a much smaller set
+        of real signals (status, faults, workload, baseline) each logged more than once on
+        different scales. Machine <b>M2</b> shows repeated fault spikes, pointing to occasional
+        serious events. Machines <b>M3 and M5</b> show a status score that drops and never
+        recovers — consistent with a breakdown or shutdown partway through the log. Machine
+        <b>M4</b> shows up-and-down instability instead — more like a recurring issue than one
+        clean failure. All machines share the same workload cycle (F14), so whatever is driving
+        that is external to any single machine — a shared task, schedule, or system load. F16
+        (MOB vs. CPU) looks like it marks two different device types or monitoring modes, each
+        with their own baseline behavior.
+        <br><br>
+        Altogether, this fits a <b>predictive-maintenance style monitoring dataset</b> — the
+        kind of data you'd collect to catch a machine (or its memory/resource usage) trending
+        toward failure before it actually breaks down.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### Where this hypothesis is uncertain")
+    st.markdown(
+        """
+        <div class="why-box">
+        - We don't have real column names, so "status," "fault count," and "workload" are our
+        best-fit labels, not confirmed definitions.<br>
+        - F17 and F15 don't fit neatly into the story above — they may be unrelated sensors, or
+        pieces of the story we can't fully reconstruct from this data alone.<br>
+        - F3's two-hump pattern is not explained by F16, so at least one more hidden factor is
+        still unaccounted for.<br>
+        - With only 130 rows across 5 machines, this is a small sample to generalize from —
+        useful for spotting patterns, but not for drawing firm conclusions.
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
 # ----------------------------------------------------------------------------
