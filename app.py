@@ -1,5 +1,5 @@
 """
-Anonymized Sensor Dataset — Exploratory Data Analysis Dashboard
+Anonymized Sensor Dataset - Exploratory Data Analysis Dashboard
 Built from a raw EDA notebook. Single consistent color scheme throughout.
 """
 
@@ -11,19 +11,19 @@ import streamlit as st
 from sklearn.decomposition import PCA
 from sklearn.feature_selection import mutual_info_regression
 from sklearn.preprocessing import StandardScaler
+from plotly.subplots import make_subplots
 
 # ----------------------------------------------------------------------------
 # PAGE CONFIG
 # ----------------------------------------------------------------------------
 st.set_page_config(
     page_title="Sensor Data EDA Dashboard",
-    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # ----------------------------------------------------------------------------
-# COLOR SCHEME — one palette, used everywhere (charts, badges, accents)
+# COLOR SCHEME - one palette, used everywhere (charts, badges, accents)
 # ----------------------------------------------------------------------------
 PRIMARY = "#1F4E79"      # deep steel blue   -> main / default series
 SECONDARY = "#2A9D8F"    # teal              -> secondary series / positive
@@ -86,6 +86,13 @@ st.markdown(
         font-size: 0.9rem;
         color: #444;
     }}
+    .box-label {{
+        color: {PRIMARY};
+        font-size: 0.78rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }}
+    .why-box .box-label {{ color: {NEUTRAL}; }}
     .metric-card {{
         background-color: {LIGHT};
         padding: 14px;
@@ -100,33 +107,39 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-def why_box(text):
-    st.markdown(f'<div class="why-box">🎯 <b>Why this subset:</b> {text}</div>', unsafe_allow_html=True)
+def render_box(label, points, style_class):
+    if isinstance(points, str):
+        points = [points]
+    items = "".join(f"<li style='margin-bottom:4px;'>{p}</li>" for p in points)
+    st.markdown(
+        f'<div class="{style_class}"><div class="box-label">{label}</div>'
+        f'<ul style="margin:6px 0 0 18px;padding:0;">{items}</ul></div>',
+        unsafe_allow_html=True,
+    )
 
-def insight_box(text):
-    st.markdown(f'<div class="insight-box">💡 <b>What this could mean:</b> {text}</div>', unsafe_allow_html=True)
+def why_box(points):
+    render_box("Why this subset", points, "why-box")
+
+def insight_box(points):
+    render_box("What this could mean", points, "insight-box")
 
 # ----------------------------------------------------------------------------
 # DATA LOADING
 # ----------------------------------------------------------------------------
 @st.cache_data
-def load_data(file):
-    df = pd.read_csv(file)
+def load_data(path):
+    df = pd.read_csv(path)
     df["F2_seq"] = df["F2"].str.extract(r"(\d+)").astype(int)
     return df
 
 DATA_PATH = "data/data.csv"
 
-st.sidebar.title("📊 EDA Dashboard")
-uploaded = st.sidebar.file_uploader("Upload dataset CSV", type=["csv"])
+st.sidebar.title("EDA Dashboard")
 
 try:
-    if uploaded is not None:
-        df = load_data(uploaded)
-    else:
-        df = load_data(DATA_PATH)
+    df = load_data(DATA_PATH)
 except FileNotFoundError:
-    st.error("No dataset found. Please upload the CSV using the sidebar uploader.")
+    st.error("Could not find data/data.csv. Make sure the dataset is included in the app folder.")
     st.stop()
 
 num_cols = [c for c in df.columns if c not in ["F1", "F2", "F16", "F2_seq"]]
@@ -153,16 +166,16 @@ REDUNDANT_PAIRS = [
 # SIDEBAR NAVIGATION
 # ----------------------------------------------------------------------------
 PAGES = [
-    "🏠 Overview",
-    "🧹 Data Quality",
-    "🗂️ Categorical Breakdown",
-    "📈 Numeric Distributions",
-    "🚨 Outliers by Machine",
-    "🔗 Feature Redundancy",
-    "🔀 Relationship Shapes",
-    "🧭 PCA — All Features at Once",
-    "⏱️ F2 as Time",
-    "🧩 Overall Hypothesis",
+    "Overview",
+    "Data Quality",
+    "Categorical Breakdown",
+    "Numeric Distributions",
+    "Outliers by Machine",
+    "Feature Redundancy",
+    "Relationship Shapes",
+    "PCA - All Features at Once",
+    "F2 as Time",
+    "Overall Hypothesis",
 ]
 page = st.sidebar.radio("Sections", PAGES)
 
@@ -170,24 +183,24 @@ st.sidebar.markdown("---")
 st.sidebar.markdown(
     f"""
     <div class="metric-card">
-    <b>{df.shape[0]}</b> rows &nbsp;·&nbsp; <b>{df.shape[1]-1}</b> columns<br>
-    <span style="color:{NEUTRAL}; font-size:0.8rem;">F1 groups: M1–M5 &nbsp;|&nbsp; F16: MOB / CPU</span>
+    <b>{df.shape[0]}</b> rows &nbsp;&middot;&nbsp; <b>{df.shape[1]-1}</b> columns<br>
+    <span style="color:{NEUTRAL}; font-size:0.8rem;">F1 groups: M1-M5 &nbsp;|&nbsp; F16: MOB / CPU</span>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
 # ============================================================================
-# PAGE 1 — OVERVIEW
+# PAGE 1 - OVERVIEW
 # ============================================================================
-if page == "🏠 Overview":
-    st.title("📊 Anonymized Sensor Dataset — Exploratory Analysis")
+if page == "Overview":
+    st.title("Anonymized Sensor Dataset - Exploratory Analysis")
     st.markdown(
-        "This dashboard walks through an end-to-end EDA of an anonymized dataset "
-        "with 19 features (F1–F19) collected across **5 machines (M1–M5)** and split "
-        "into two device categories, **MOB** and **CPU**. The goal was to understand "
-        "the *shape* of each feature, find *redundant* or duplicated signals, and see "
-        "whether the anonymized columns hide a real underlying story."
+        "This dashboard walks through an EDA of an anonymized dataset with 19 features "
+        "(F1-F19), collected across 5 machines (M1-M5) and split into two device categories, "
+        "MOB and CPU. The goal was to understand the shape of each feature, find redundant "
+        "or duplicated signals, and see whether the anonymized columns hide a real "
+        "underlying story."
     )
 
     c1, c2, c3, c4 = st.columns(4)
@@ -204,15 +217,11 @@ if page == "🏠 Overview":
 
     st.markdown("### How to read this dashboard")
     st.markdown(
-        """
-        Every section follows the same pattern:
-        - **🎯 Why this subset** — which features are shown and the reasoning for grouping them together.
-        - **The chart(s)** — all using the same color scheme, so a color always means the same thing across the whole dashboard.
-        - **💡 What this could mean** — a plain-language interpretation you can use when presenting.
-
-        **Color key used throughout:**
-        """
+        "- Each section opens with a short note on why that subset of features is being looked at\n"
+        "- The charts all follow the same color scheme, so a color means the same thing everywhere\n"
+        "- Each section closes with a plain-language read on what the pattern could mean"
     )
+    st.markdown("Color key used throughout:")
     legend_cols = st.columns(7)
     swatches = [("M1", MACHINE_COLORS["M1"]), ("M2", MACHINE_COLORS["M2"]), ("M3", MACHINE_COLORS["M3"]),
                 ("M4", MACHINE_COLORS["M4"]), ("M5", MACHINE_COLORS["M5"]),
@@ -228,14 +237,14 @@ if page == "🏠 Overview":
     st.dataframe(df.drop(columns=["F2_seq"]).head(10), use_container_width=True)
 
 # ============================================================================
-# PAGE 2 — DATA QUALITY
+# PAGE 2 - DATA QUALITY
 # ============================================================================
-elif page == "🧹 Data Quality":
-    st.title("🧹 Data Quality Check")
-    why_box(
-        "Before trusting any pattern in the data, we confirm there are no missing values "
-        "or duplicate rows that could distort distributions, correlations, or the PCA later on."
-    )
+elif page == "Data Quality":
+    st.title("Data Quality Check")
+    why_box([
+        "Before trusting any pattern in the data, it's worth confirming there are no missing "
+        "values or duplicate rows that could distort distributions, correlations, or the PCA later on."
+    ])
 
     missing = df.drop(columns=["F2_seq"]).isna().sum()
     dup_count = df.drop(columns=["F2_seq"]).duplicated().sum()
@@ -264,21 +273,21 @@ elif page == "🧹 Data Quality":
             unsafe_allow_html=True,
         )
 
-    insight_box(
-        "The data is clean — nothing missing, nothing duplicated. That means everything we "
-        "find later on is a real pattern, not a mistake in the data."
-    )
+    insight_box([
+        "The data is clean, nothing missing and nothing duplicated",
+        "That means the patterns found later on are real, not mistakes in the data",
+    ])
 
 # ============================================================================
-# PAGE 3 — CATEGORICAL BREAKDOWN
+# PAGE 3 - CATEGORICAL BREAKDOWN
 # ============================================================================
-elif page == "🗂️ Categorical Breakdown":
-    st.title("🗂️ Categorical Breakdown — F1 and F16")
-    why_box(
-        "F1 and F16 are the only two categorical columns in the dataset. They matter because "
-        "every downstream grouping (outlier analysis, stratified scatter plots, PCA coloring) "
-        "hinges on these two labels, so we check their balance first."
-    )
+elif page == "Categorical Breakdown":
+    st.title("Categorical Breakdown - F1 and F16")
+    why_box([
+        "F1 and F16 are the only two categorical columns in the dataset, and every grouping "
+        "used later (outlier analysis, stratified scatter plots, PCA coloring) depends on them, "
+        "so it makes sense to check their balance first."
+    ])
 
     c1, c2 = st.columns(2)
     with c1:
@@ -304,22 +313,21 @@ elif page == "🗂️ Categorical Breakdown":
         fig = style_fig(fig, height=380)
         st.plotly_chart(fig, use_container_width=True)
 
-    insight_box(
-        "F1 is split evenly — 26 rows for each of the 5 machines. That looks planned, not "
-        "random. F16 is not even — 105 MOB rows vs only 25 CPU rows. So whenever we compare "
-        "MOB and CPU later, remember CPU has a lot less data behind it."
-    )
+    insight_box([
+        "F1 is split evenly, 26 rows for each of the 5 machines, which looks planned rather than random",
+        "F16 is not even, 105 MOB rows against 25 CPU rows",
+        "Worth remembering later on, since any MOB vs CPU comparison is resting on a much smaller CPU sample",
+    ])
 
 # ============================================================================
-# PAGE 4 — NUMERIC DISTRIBUTIONS
+# PAGE 4 - NUMERIC DISTRIBUTIONS
 # ============================================================================
-elif page == "📈 Numeric Distributions":
-    st.title("📈 Numeric Distributions")
-    why_box(
-        "The 16 numeric columns (F3–F19, excluding F16) are grouped by the *shape* of their "
-        "distribution rather than shown in column order. Features that share a shape often "
-        "share a cause, so grouping them this way makes the patterns easier to explain."
-    )
+elif page == "Numeric Distributions":
+    st.title("Numeric Distributions")
+    why_box([
+        "The 16 numeric columns are grouped by the shape of their distribution rather than "
+        "shown in column order, since features that share a shape often share a cause."
+    ])
 
     tabs = st.tabs([
         "Bimodal (F3,F4,F5,F6,F7,F19)",
@@ -330,28 +338,38 @@ elif page == "📈 Numeric Distributions":
     ])
     groups = [BIMODAL_COLS, RIGHT_SKEW_COLS, LEFT_SKEW_COLS, UNIFORM_COLS, NORMAL_COLS]
     shape_msgs = [
-        "Two humps usually means two situations, not one steady process — like healthy vs. "
-        "broken, or on vs. off. Since F3, F4, F6 and F7 all move together perfectly (see the "
-        "Feature Redundancy tab), they're probably **one real signal repeated on different scales**, "
-        "not six different things.",
-        "Most values sit low, with a few very high spikes. This is what you'd expect from "
-        "**rare events or faults** — things are normal most of the time, then something goes "
-        "wrong and the number jumps. These are the columns worth checking for outliers.",
-        "F15 is the opposite — usually high, with occasional low dips. This looks like a "
-        "**health or usage score that's normally near its max** and drops when something's off.",
-        "F14 is spread out evenly with no real peak. That's unusual for a sensor reading — it "
-        "looks more like a **counter or a repeating schedule/cycle** than something being measured.",
-        "F18 forms a clean bell curve, which usually means it's a **stable baseline reading** "
-        "with normal small ups and downs, not something reacting to events.",
+        [
+            "Two humps usually means two situations rather than one steady process, like "
+            "healthy vs broken, or on vs off",
+            "F3, F4, F6 and F7 all move together, so they are probably one real signal "
+            "repeated on different scales, not six different things",
+        ],
+        [
+            "Most values sit low, with a few high spikes",
+            "This is what you would expect from rare events or faults, normal most of the "
+            "time, then something goes wrong and the number jumps",
+            "These are the columns worth checking for outliers",
+        ],
+        [
+            "F15 is the opposite, usually high with occasional low dips",
+            "This looks like a health or usage score that is normally near its max and "
+            "drops when something is off",
+        ],
+        [
+            "F14 is spread out evenly with no real peak",
+            "That is unusual for a sensor reading, it looks more like a counter or a "
+            "repeating schedule than something being measured",
+        ],
+        [
+            "F18 forms a clean bell curve",
+            "That usually means it is a stable baseline reading with normal small ups and "
+            "downs, not something reacting to events",
+        ],
     ]
 
     for tab, cols, msg in zip(tabs, groups, shape_msgs):
         with tab:
             n = len(cols)
-            fig = go.Figure()
-            rows_n = 1
-            cols_n = n
-            from plotly.subplots import make_subplots
             sp = make_subplots(rows=1, cols=n, subplot_titles=cols)
             for i, c in enumerate(cols):
                 sp.add_trace(
@@ -363,38 +381,35 @@ elif page == "📈 Numeric Distributions":
             st.plotly_chart(sp, use_container_width=True)
             insight_box(msg)
 
-    st.markdown("### Boxplots — spotting outliers at a glance")
-    why_box(
-        "Same 16 columns, same order — boxplots make it immediate which features have points "
-        "sitting far outside the whisker range, which is what motivates the dedicated outlier "
-        "section next."
-    )
-    fig = make_subplots_box = None
-    from plotly.subplots import make_subplots as _ms
-    sp = _ms(rows=4, cols=4, subplot_titles=ALL_SHAPE_COLS)
+    st.markdown("### Boxplots - spotting outliers at a glance")
+    why_box([
+        "Same 16 columns, same order. Boxplots make it easy to see which features have "
+        "points sitting far outside the normal range, which is what the outlier section "
+        "that follows digs into."
+    ])
+    sp = make_subplots(rows=4, cols=4, subplot_titles=ALL_SHAPE_COLS)
     for i, c in enumerate(ALL_SHAPE_COLS):
         r, cc = divmod(i, 4)
         sp.add_trace(go.Box(y=df[c], marker_color=SECONDARY, name=c, showlegend=False), row=r + 1, col=cc + 1)
     sp = style_fig(sp, height=800)
     st.plotly_chart(sp, use_container_width=True)
-    insight_box(
-        "F8, F9, F10, F11, F12, F13 and F17 all have points shooting up above the box — these "
-        "are the columns with real outliers. F15 has a few low outliers, which matches its shape. "
-        "F3, F4, F5, F6, F7, F14, F18 and F19 have no extreme values at all — well-behaved, "
-        "even the ones with two humps."
-    )
+    insight_box([
+        "F8, F9, F10, F11, F12, F13 and F17 all have points shooting up above the box, "
+        "these are the columns with real outliers",
+        "F15 has a few low outliers, which matches its shape",
+        "F3, F4, F5, F6, F7, F14, F18 and F19 have no extreme values, even the ones with two humps",
+    ])
 
 # ============================================================================
-# PAGE 5 — OUTLIERS BY MACHINE
+# PAGE 5 - OUTLIERS BY MACHINE
 # ============================================================================
-elif page == "🚨 Outliers by Machine":
-    st.title("🚨 Outlier Deep-Dive, Grouped by Machine (F1)")
-    why_box(
-        "We narrow down to the 6 columns that showed the strongest outliers in the previous "
-        "section (F8, F9, F10, F11, F12, F13) and break each one down by F1 (machine group). "
-        "This tells us **whether outliers are random noise or tied to a specific machine** — "
-        "a much more actionable finding than 'this column has outliers'."
-    )
+elif page == "Outliers by Machine":
+    st.title("Outlier Deep-Dive, Grouped by Machine (F1)")
+    why_box([
+        "This narrows down to the 6 columns that showed the strongest outliers in the "
+        "previous section, and breaks each one down by machine, to see whether the "
+        "outliers are random noise or tied to a specific machine."
+    ])
 
     for c in OUTLIER_COLS:
         fig = go.Figure()
@@ -409,30 +424,26 @@ elif page == "🚨 Outliers by Machine":
         fig = style_fig(fig, height=380)
         st.plotly_chart(fig, use_container_width=True)
 
-    insight_box(
-        "**F8, F9, F10:** Machine M2 has the biggest spikes in all three, while M4 stays low and "
-        "steady the whole time. This points to **M2 having occasional serious problems** — the "
-        "first machine worth checking. "
-        "<br><br>"
-        "**F11:** this time it's the opposite — **M4** is the one that swings wildly, while the "
-        "other four machines barely move. So F11 seems to be picking up something specific to M4. "
-        "<br><br>"
-        "**F12 & F13:** these two look almost identical, and both spike with M2 — strong evidence "
-        "they're **the same measurement, just written down twice on different scales**."
-    )
+    insight_box([
+        "F8, F9 and F10: machine M2 has the biggest spikes in all three, while M4 stays low "
+        "and steady the whole time, pointing to M2 having occasional serious problems",
+        "F11: the pattern flips, M4 is the one that swings wildly while the other four "
+        "machines barely move, so F11 seems to be picking up something specific to M4",
+        "F12 and F13: these two look almost identical, and both spike with M2, which is "
+        "strong evidence they are the same measurement written down twice on different scales",
+    ])
 
 # ============================================================================
-# PAGE 6 — FEATURE REDUNDANCY
+# PAGE 6 - FEATURE REDUNDANCY
 # ============================================================================
-elif page == "🔗 Feature Redundancy":
-    st.title("🔗 Feature Redundancy — Correlation & Mutual Information")
-    why_box(
-        "All 16 numeric columns are compared against each other, in full, because redundancy "
-        "detection only works if nothing is excluded — a hidden duplicate could be anywhere. "
-        "We use **two** methods on purpose: correlation only catches straight-line relationships, "
-        "while mutual information also catches curved / non-linear ones, so pairs that agree "
-        "across both methods are the most confidently redundant."
-    )
+elif page == "Feature Redundancy":
+    st.title("Feature Redundancy - Correlation and Mutual Information")
+    why_box([
+        "All 16 numeric columns are compared against each other in full, since a hidden "
+        "duplicate could be anywhere. Two methods are used on purpose: correlation only "
+        "catches straight-line relationships, mutual information also catches curved ones, "
+        "so pairs that agree across both are the most confidently redundant."
+    ])
 
     corr = df[num_cols].corr()
 
@@ -453,47 +464,46 @@ elif page == "🔗 Feature Redundancy":
                 mi_matrix[c] = scores
         fig = px.imshow(
             mi_matrix, text_auto=".2f", color_continuous_scale=[LIGHT, SECONDARY, PRIMARY],
-            title="Mutual information matrix (linear + non-linear)",
+            title="Mutual information matrix (linear and non-linear)",
         )
         fig = style_fig(fig, height=520)
         st.plotly_chart(fig, use_container_width=True)
 
-    insight_box(
-        "F3, F4, F6 and F7 move together almost perfectly — they're likely **the same signal, "
-        "recorded differently**. F12 and F13 are basically identical twins (the strongest match "
-        "in the whole matrix). F8, F9 and F10 also travel together, and F11 is related to them "
-        "but not a duplicate. F14/F15 and F18/F19 are connected but not copies of each other — "
-        "something a bit more complex links them, which we'll see clearly in the next section. "
-        "F17 stands alone — it barely relates to anything else, so it's probably measuring "
-        "something genuinely different from the rest of the dataset."
-    )
+    insight_box([
+        "F3, F4, F6 and F7 move together almost perfectly, likely the same signal recorded differently",
+        "F12 and F13 are basically identical twins, the strongest match in the whole matrix",
+        "F8, F9 and F10 also travel together, and F11 is related to them but not a duplicate",
+        "F14/F15 and F18/F19 are connected but not copies of each other, something a bit "
+        "more complex links them, shown clearly in the next section",
+        "F17 stands alone, it barely relates to anything else, so it is probably measuring "
+        "something genuinely different from the rest of the dataset",
+    ])
 
     st.markdown("### Quantifying the strongest pairs")
-    why_box(
+    why_box([
         "This table restates the same handful of pairs the heatmaps flagged, but as exact "
-        "numbers — useful for backing up a claim like 'these are duplicates' with a precise R²."
-    )
+        "numbers, useful for backing up a claim like these are duplicates with a precise figure."
+    ])
     rows = []
     for x, y in REDUNDANT_PAIRS:
         slope, intercept = np.polyfit(df[x], df[y], 1)
         r = df[x].corr(df[y])
-        rows.append({"Feature X": x, "Feature Y": y, "r": round(r, 4), "R²": round(r**2, 4)})
-    pair_df = pd.DataFrame(rows).sort_values("R²", ascending=False)
+        rows.append({"Feature X": x, "Feature Y": y, "r": round(r, 4), "R2": round(r**2, 4)})
+    pair_df = pd.DataFrame(rows).sort_values("R2", ascending=False)
     st.dataframe(pair_df, use_container_width=True, hide_index=True)
 
 # ============================================================================
-# PAGE 7 — RELATIONSHIP SHAPES
+# PAGE 7 - RELATIONSHIP SHAPES
 # ============================================================================
-elif page == "🔀 Relationship Shapes":
-    st.title("🔀 Relationship Shapes — Scatter Plots")
-    why_box(
-        "We visualize exactly the pairs flagged as redundant in the previous section — seeing "
-        "the *shape* of a relationship (straight line vs. curve vs. split lines) tells us "
-        "**what kind** of redundancy we're dealing with, which a correlation number alone can't."
-    )
+elif page == "Relationship Shapes":
+    st.title("Relationship Shapes - Scatter Plots")
+    why_box([
+        "This visualizes the pairs flagged as redundant in the previous section, since the "
+        "shape of a relationship, straight line vs curve vs split lines, tells us what kind "
+        "of redundancy is at play, which a correlation number alone can't."
+    ])
 
-    from plotly.subplots import make_subplots as _ms2
-    sp = _ms2(rows=3, cols=3, subplot_titles=[f"{x} vs {y}" for x, y in REDUNDANT_PAIRS])
+    sp = make_subplots(rows=3, cols=3, subplot_titles=[f"{x} vs {y}" for x, y in REDUNDANT_PAIRS])
     for i, (x, y) in enumerate(REDUNDANT_PAIRS):
         r, c = divmod(i, 3)
         sp.add_trace(
@@ -504,20 +514,19 @@ elif page == "🔀 Relationship Shapes":
     sp = style_fig(sp, height=850)
     st.plotly_chart(sp, use_container_width=True)
 
-    insight_box(
-        "F3–F4, F3–F6, F3–F7, F8–F9, F8–F10, F9–F10 and F12–F13 all form clean straight lines — "
-        "confirming they're duplicates of each other. F14 vs F15 forms a **curve**, not a "
-        "straight line — a real relationship, just not a simple copy. F18 vs F19 splits into "
-        "**two separate parallel lines** — usually a sign that a hidden category is splitting "
-        "the data into two groups."
-    )
+    insight_box([
+        "F3-F4, F3-F6, F3-F7, F8-F9, F8-F10, F9-F10 and F12-F13 all form clean straight "
+        "lines, confirming they are duplicates of each other",
+        "F14 vs F15 forms a curve, not a straight line, a real relationship but not a simple copy",
+        "F18 vs F19 splits into two separate parallel lines, usually a sign that a hidden "
+        "category is splitting the data into two groups",
+    ])
 
-    st.markdown("### What explains the F18/F19 split and the F3 bimodal peaks?")
-    why_box(
-        "F16 (device category) is the only other categorical column, so it's the natural "
-        "candidate to test as the hidden driver behind the F18/F19 split and the F3 bimodal "
-        "shape — we color by F16 to check."
-    )
+    st.markdown("### What explains the F18/F19 split and the F3 bimodal peaks")
+    why_box([
+        "F16 is the only other categorical column, so it's the natural candidate to test as "
+        "the hidden driver behind the F18/F19 split and the F3 bimodal shape."
+    ])
     c1, c2 = st.columns(2)
     with c1:
         fig = px.scatter(
@@ -534,24 +543,24 @@ elif page == "🔀 Relationship Shapes":
         fig = style_fig(fig, height=420, legend_title="F16")
         st.plotly_chart(fig, use_container_width=True)
 
-    insight_box(
-        "F16 **does** explain the F18/F19 split — CPU rows sit only on the top line, while MOB "
-        "rows are spread across both lines. So F16 (or something tied to it) is behind that split. "
-        "But F16 does **not** explain F3's two peaks — MOB and CPU both show the exact same "
-        "two-hump pattern, so something else, still unknown, is causing that one."
-    )
+    insight_box([
+        "F16 does explain the F18/F19 split, CPU rows sit only on the top line while MOB "
+        "rows are spread across both lines",
+        "F16 does not explain F3's two peaks, MOB and CPU both show the exact same two-hump pattern",
+        "So something else, still unknown, is behind the F3 split",
+    ])
 
 # ============================================================================
-# PAGE 8 — PCA
+# PAGE 8 - PCA
 # ============================================================================
-elif page == "🧭 PCA — All Features at Once":
-    st.title("🧭 Multivariate View — PCA")
-    why_box(
-        "Rather than looking at features two at a time, PCA compresses **all 16 numeric "
-        "columns at once** into 2 new axes (PC1, PC2) that capture as much of the original "
-        "spread as possible. This is the fastest way to check for redundancy and hidden "
-        "grouping across the entire dataset in a single plot."
-    )
+elif page == "PCA - All Features at Once":
+    st.title("Multivariate View - PCA")
+    why_box([
+        "Instead of looking at features two at a time, PCA compresses all 16 numeric "
+        "columns at once into 2 new axes that capture as much of the original spread as "
+        "possible, which is a fast way to check for redundancy and hidden grouping across "
+        "the whole dataset in a single plot."
+    ])
 
     X_scaled = StandardScaler().fit_transform(df[num_cols])
     pca = PCA(n_components=2)
@@ -570,32 +579,33 @@ elif page == "🧭 PCA — All Features at Once":
     palette = F16_COLORS if color_by == "F16" else MACHINE_COLORS
     fig = px.scatter(
         df_pca, x="PC1", y="PC2", color=color_by, color_discrete_map=palette,
-        title=f"PCA — all features compressed to 2D, colored by {color_by}",
+        title=f"PCA, all features compressed to 2D, colored by {color_by}",
         opacity=0.75,
     )
     fig = style_fig(fig, height=500, legend_title=color_by)
     st.plotly_chart(fig, use_container_width=True)
 
-    insight_box(
-        f"Just 2 combined 'summary' axes — out of the original 16 columns — capture "
-        f"**{var1+var2:.1f}%** of everything happening in the data. That's a strong sign a lot of "
-        "those 16 columns are repeating the same information on different scales, exactly what "
-        "the redundancy sections found. When colored by F16, CPU and MOB form separate clusters "
-        "— so F16 is a **real structural difference**, not just a label. Switch the color to F1 "
-        "to see whether individual machines cluster too."
-    )
+    insight_box([
+        f"Just two combined axes, out of the original 16 columns, capture {var1+var2:.1f} "
+        "percent of everything happening in the data",
+        "That's a strong sign a lot of those columns are repeating the same information on "
+        "different scales, matching what the redundancy sections found",
+        "When colored by F16, CPU and MOB form separate clusters, so F16 is a real "
+        "structural difference, not just a label",
+        "Switching the color to F1 shows whether individual machines cluster the same way",
+    ])
 
 # ============================================================================
-# PAGE 9 — F2 AS TIME
+# PAGE 9 - F2 AS TIME
 # ============================================================================
-elif page == "⏱️ F2 as Time":
-    st.title("⏱️ Treating F2 as a Time / Sequence Index")
-    why_box(
-        "F2 looks like a step label (T1, T2, T3…) rather than a category. We test the "
-        "hypothesis that it encodes **sequence/time** by extracting its numeric part and "
-        "tracking three representative features — one from each shape family found earlier "
-        "(F3: bimodal, F14: uniform, F18: normal) — across that sequence, per machine."
-    )
+elif page == "F2 as Time":
+    st.title("Treating F2 as a Time / Sequence Index")
+    why_box([
+        "F2 looks like a step label, T1, T2, T3, rather than a category. This section tests "
+        "the idea that it encodes sequence or time by extracting its numeric part and "
+        "tracking three representative features, one from each shape family found earlier, "
+        "across that sequence, per machine."
+    ])
 
     features_to_track = ["F3", "F14", "F18"]
     df_sorted = df.sort_values(by=["F1", "F2_seq"])
@@ -614,50 +624,40 @@ elif page == "⏱️ F2 as Time":
         fig = style_fig(fig, height=380, legend_title="F1")
         st.plotly_chart(fig, use_container_width=True)
 
-    insight_box(
-        "**F3 (status):** M1 and M2 stay healthy the whole time, around 95. M3 and M5 drop hard "
-        "around step 11 and never come back up — that looks like a **breakdown that doesn't "
-        "recover**. M4 keeps going up and down — more like a **recurring problem** than one big "
-        "failure. "
-        "<br><br>"
-        "**F14 (workload):** every machine rises and falls at the *exact same steps*. Independent "
-        "machines wouldn't naturally line up like that on their own — this is probably a "
-        "**shared schedule or outside workload** hitting all of them together. "
-        "<br><br>"
-        "**F18 (baseline):** each machine sits at its own steady level (M5 highest, M3 lowest), "
-        "and all of them spike at the same moments F14 spikes — so F18 looks like **each "
-        "machine's personal baseline reacting to that same shared workload**. "
-        "<br><br>"
-        "Put together: this is the strongest sign that F2 really does represent time, and that "
-        "the machines share an outside workload even while some of them fail on their own "
-        "separate timeline."
-    )
+    insight_box([
+        "F3, status: M1 and M2 stay healthy the whole time, around 95. M3 and M5 drop hard "
+        "around step 11 and never come back up, which looks like a breakdown that doesn't "
+        "recover. M4 keeps going up and down, more like a recurring problem than one big failure",
+        "F14, workload: every machine rises and falls at the exact same steps. Independent "
+        "machines wouldn't naturally line up like that on their own, so this is probably a "
+        "shared schedule or outside workload hitting all of them together",
+        "F18, baseline: each machine sits at its own steady level, M5 highest and M3 lowest, "
+        "and all of them spike at the same moments F14 spikes, so F18 looks like each "
+        "machine's personal baseline reacting to that same shared workload",
+        "Put together, this is the strongest sign that F2 really does represent time, and "
+        "that the machines share an outside workload even while some of them fail on their "
+        "own separate timeline",
+    ])
 
 # ============================================================================
-# PAGE 10 — OVERALL HYPOTHESIS
+# PAGE 10 - OVERALL HYPOTHESIS
 # ============================================================================
-elif page == "🧩 Overall Hypothesis":
-    st.title("🧩 Putting It All Together — What Is This Data Actually Tracking?")
-    why_box(
-        "Every earlier tab looked at one piece of the puzzle on its own. This tab lines up "
-        "all of those pieces side by side to answer the bigger question: what real-world "
-        "thing was this dataset built to measure? This is a **hypothesis** — the "
-        "best-supported explanation given what we found — not a confirmed fact, since the "
-        "column names are anonymized and there's no metadata to check it against."
-    )
+elif page == "Overall Hypothesis":
+    st.title("Putting It All Together - What Is This Data Actually Tracking")
+    why_box([
+        "Every earlier section looked at one piece of the puzzle on its own. This section "
+        "lines up all of those pieces to answer the bigger question, what real-world thing "
+        "was this dataset built to measure. This is a hypothesis, the best-supported "
+        "explanation given what was found, not a confirmed fact, since the column names are "
+        "anonymized and there is no metadata to check it against."
+    ])
 
     st.markdown("### The short version")
     st.markdown(
-        f"""
-        <div class="insight-box" style="font-size:1.05rem;">
-        This looks like a <b>machine health monitoring log</b>: {int(df.shape[0])} readings taken
-        from <b>5 machines (F1)</b> at repeated <b>time steps (F2)</b>, tracking each machine's
-        operating status, workload, and warning signs over time — similar to what a system would
-        log to watch for hardware faults or memory/resource problems before they cause a
-        breakdown.
-        </div>
-        """,
-        unsafe_allow_html=True,
+        f"This looks like a machine health monitoring log: {int(df.shape[0])} readings taken "
+        "from 5 machines (F1) at repeated time steps (F2), tracking each machine's operating "
+        "status, workload, and warning signs over time, similar to what a system would log to "
+        "watch for hardware faults or memory and resource problems before they cause a breakdown."
     )
 
     st.markdown("### How each piece supports this")
@@ -665,61 +665,55 @@ elif page == "🧩 Overall Hypothesis":
         """
         | Column(s) | Most likely role | Based on |
         |---|---|---|
-        | **F1** | Machine ID (5 separate machines) | Perfectly even 26 rows each — a tracking ID, not a random category |
-        | **F2** | Time step / reading number | Sequential labels (T1, T2, T3…); features change in a consistent order when sorted by it |
-        | **F3, F4, F6, F7** | Machine health / status score | Two-hump shape (healthy vs. degraded); drops permanently for M3 and M5 partway through |
-        | **F8, F9, F10, F12, F13** | Fault or error counters | Normally near zero, occasional huge spikes — concentrated on machine M2 |
-        | **F11** | Machine-specific stress signal | Only M4 shows a wide spread — looks tied to that one machine's load |
-        | **F14** | Shared workload / job cycle | Same up-down wave on every machine at the same steps — a schedule, not a sensor |
-        | **F18** | Per-machine resource baseline (e.g. memory/load level) | Each machine has its own steady level, but all spike together with F14's workload |
-        | **F15, F17** | Independent health/resource readings | Don't match the redundant groups above — separate signals |
-        | **F16** | Device or monitoring category (MOB / CPU) | Splits F18 vs F19 into two clean lines — a real structural difference |
+        | F1 | Machine ID, 5 separate machines | Perfectly even 26 rows each, a tracking ID rather than a random category |
+        | F2 | Time step or reading number | Sequential labels (T1, T2, T3), features change in a consistent order when sorted by it |
+        | F3, F4, F6, F7 | Machine health or status score | Two-hump shape, healthy vs degraded, drops permanently for M3 and M5 partway through |
+        | F8, F9, F10, F12, F13 | Fault or error counters | Normally near zero, occasional large spikes, concentrated on machine M2 |
+        | F11 | Machine-specific stress signal | Only M4 shows a wide spread, looks tied to that one machine's load |
+        | F14 | Shared workload or job cycle | Same up-down wave on every machine at the same steps, a schedule rather than a sensor |
+        | F18 | Per-machine resource baseline | Each machine has its own steady level, but all spike together with F14's workload |
+        | F15, F17 | Independent health or resource readings | Don't match the redundant groups above, separate signals |
+        | F16 | Device or monitoring category, MOB or CPU | Splits F18 vs F19 into two clean lines, a real structural difference |
         """
     )
 
     st.markdown("### The story this tells")
     st.markdown(
-        """
-        <div class="insight-box">
-        Reading the sections in order: each row is <b>one machine, at one point in time</b>.
-        Most of the 16 numeric columns are not 16 separate things — they're a much smaller set
-        of real signals (status, faults, workload, baseline) each logged more than once on
-        different scales. Machine <b>M2</b> shows repeated fault spikes, pointing to occasional
-        serious events. Machines <b>M3 and M5</b> show a status score that drops and never
-        recovers — consistent with a breakdown or shutdown partway through the log. Machine
-        <b>M4</b> shows up-and-down instability instead — more like a recurring issue than one
-        clean failure. All machines share the same workload cycle (F14), so whatever is driving
-        that is external to any single machine — a shared task, schedule, or system load. F16
-        (MOB vs. CPU) looks like it marks two different device types or monitoring modes, each
-        with their own baseline behavior.
-        <br><br>
-        Altogether, this fits a <b>predictive-maintenance style monitoring dataset</b> — the
-        kind of data you'd collect to catch a machine (or its memory/resource usage) trending
-        toward failure before it actually breaks down.
-        </div>
-        """,
-        unsafe_allow_html=True,
+        "Reading the sections in order, each row is one machine at one point in time. Most "
+        "of the 16 numeric columns are not 16 separate things, they're a much smaller set of "
+        "real signals, status, faults, workload, baseline, each logged more than once on "
+        "different scales."
+    )
+    st.markdown(
+        "- Machine M2 shows repeated fault spikes, pointing to occasional serious events\n"
+        "- Machines M3 and M5 show a status score that drops and never recovers, consistent "
+        "with a breakdown or shutdown partway through the log\n"
+        "- Machine M4 shows up and down instability instead, more like a recurring issue "
+        "than one clean failure\n"
+        "- All machines share the same workload cycle, so whatever drives it is external to "
+        "any single machine, a shared task, schedule, or system load\n"
+        "- F16 looks like it marks two different device types or monitoring modes, each with "
+        "their own baseline behavior"
+    )
+    st.markdown(
+        "Altogether, this fits a predictive-maintenance style monitoring dataset, the kind of "
+        "data collected to catch a machine, or its memory and resource usage, trending toward "
+        "failure before it actually breaks down."
     )
 
     st.markdown("### Where this hypothesis is uncertain")
     st.markdown(
-        """
-        <div class="why-box">
-        - We don't have real column names, so "status," "fault count," and "workload" are our
-        best-fit labels, not confirmed definitions.<br>
-        - F17 and F15 don't fit neatly into the story above — they may be unrelated sensors, or
-        pieces of the story we can't fully reconstruct from this data alone.<br>
-        - F3's two-hump pattern is not explained by F16, so at least one more hidden factor is
-        still unaccounted for.<br>
-        - With only 130 rows across 5 machines, this is a small sample to generalize from —
-        useful for spotting patterns, but not for drawing firm conclusions.
-        </div>
-        """,
-        unsafe_allow_html=True,
+        "- The real column names aren't known, so status, fault count, and workload are best-fit labels, not confirmed definitions\n"
+        "- F17 and F15 don't fit neatly into the story above, they may be unrelated sensors, "
+        "or pieces of the story that can't be fully reconstructed from this data alone\n"
+        "- F3's two-hump pattern isn't explained by F16, so at least one more hidden factor "
+        "is still unaccounted for\n"
+        "- With only 130 rows across 5 machines, this is a small sample to generalize from, "
+        "useful for spotting patterns but not for drawing firm conclusions"
     )
 
 # ----------------------------------------------------------------------------
 # FOOTER
 # ----------------------------------------------------------------------------
 st.sidebar.markdown("---")
-st.sidebar.caption("Built from raw EDA notebook · consistent color scheme applied across all charts.")
+st.sidebar.caption("Built from raw EDA notebook. Consistent color scheme applied across all charts.")
