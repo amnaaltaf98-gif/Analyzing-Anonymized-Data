@@ -23,16 +23,23 @@ st.set_page_config(
 )
 
 # ----------------------------------------------------------------------------
-# COLOR SCHEME - one palette, used everywhere (charts, badges, accents)
+# SESSION STATE
+# ----------------------------------------------------------------------------
+if "theme" not in st.session_state:
+    st.session_state.theme = "dark"
+if "active_page" not in st.session_state:
+    st.session_state.active_page = "Overview"
+
+# ----------------------------------------------------------------------------
+# CHART COLOR SCHEME - fixed, does not change with theme. This is what
+# keeps every chart in the dashboard reading the same way.
 # ----------------------------------------------------------------------------
 PRIMARY = "#1F4E79"      # deep steel blue   -> main / default series
 SECONDARY = "#2A9D8F"    # teal              -> secondary series / positive
 ACCENT = "#E76F51"       # warm coral        -> outliers, warnings, "CPU"
 NEUTRAL = "#8C97A5"      # slate gray        -> de-emphasized elements
-LIGHT = "#F2F6F8"        # pale blue-gray    -> backgrounds / cards
-DARK_TEXT = "#1A1A1A"
+LIGHT = "#F2F6F8"        # pale blue-gray    -> heatmap midpoint
 
-# Sequential shades of the primary palette for the 5 machine groups (F1)
 MACHINE_COLORS = {
     "M1": "#1F4E79",
     "M2": "#2E6F95",
@@ -40,26 +47,43 @@ MACHINE_COLORS = {
     "M4": "#6FBFAE",
     "M5": "#B7DED2",
 }
-# Binary category palette for F16 (kept consistent everywhere it appears)
 F16_COLORS = {"MOB": PRIMARY, "CPU": ACCENT}
 
-PLOTLY_TEMPLATE = "plotly_white"
-FONT = dict(family="Helvetica, Arial, sans-serif", color=DARK_TEXT)
-
-def style_fig(fig, height=None, legend_title=None):
-    fig.update_layout(
-        template=PLOTLY_TEMPLATE,
-        font=FONT,
-        title_font=dict(size=17, color=PRIMARY),
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        margin=dict(l=40, r=30, t=60, b=40),
-    )
-    if height:
-        fig.update_layout(height=height)
-    if legend_title is not None:
-        fig.update_layout(legend_title_text=legend_title)
-    return fig
+# ----------------------------------------------------------------------------
+# UI THEME - controls page chrome only (background, panels, nav, fonts).
+# Two palettes, switched at runtime by the toggle button in the sidebar.
+# ----------------------------------------------------------------------------
+THEMES = {
+    "dark": {
+        "ink": "#EAF2F1",
+        "muted": "#9FB3AE",
+        "glass": "rgba(255, 255, 255, 0.05)",
+        "glass_strong": "rgba(255, 255, 255, 0.09)",
+        "glass_hover": "rgba(255, 255, 255, 0.15)",
+        "border": "rgba(255, 255, 255, 0.14)",
+        "accent": "#3FB6A8",
+        "accent_warm": "#F0895F",
+        "accent2": "#8FD3C7",
+        "base": "#0D1417",
+        "plot_grid": "rgba(255, 255, 255, 0.08)",
+        "toggle_label": "Switch to light theme",
+    },
+    "light": {
+        "ink": "#1A1A1A",
+        "muted": "#6B7686",
+        "glass": "rgba(255, 255, 255, 0.55)",
+        "glass_strong": "rgba(255, 255, 255, 0.75)",
+        "glass_hover": "rgba(255, 255, 255, 0.92)",
+        "border": "rgba(31, 78, 121, 0.16)",
+        "accent": "#2A9D8F",
+        "accent_warm": "#E76F51",
+        "accent2": "#6FBFAE",
+        "base": "#F2F6F8",
+        "plot_grid": "rgba(31, 78, 121, 0.12)",
+        "toggle_label": "Switch to dark theme",
+    },
+}
+theme = THEMES[st.session_state.theme]
 
 # ----------------------------------------------------------------------------
 # GLOBAL CSS
@@ -67,41 +91,112 @@ def style_fig(fig, height=None, legend_title=None):
 st.markdown(
     f"""
     <style>
-    .stApp {{ background-color: #FFFFFF; }}
-    h1, h2, h3 {{ color: {PRIMARY}; }}
-    .insight-box {{
-        background-color: {LIGHT};
-        border-left: 5px solid {SECONDARY};
-        padding: 14px 18px;
-        border-radius: 6px;
-        margin: 12px 0px;
-        font-size: 0.95rem;
+    :root {{
+        --ink: {theme['ink']};
+        --muted: {theme['muted']};
+        --glass: {theme['glass']};
+        --glass-strong: {theme['glass_strong']};
+        --glass-hover: {theme['glass_hover']};
+        --border: {theme['border']};
+        --accent: {theme['accent']};
+        --accent-warm: {theme['accent_warm']};
+        --base: {theme['base']};
     }}
-    .why-box {{
-        background-color: #FFFFFF;
-        border: 1px dashed {NEUTRAL};
-        padding: 12px 16px;
-        border-radius: 6px;
-        margin: 10px 0px 18px 0px;
-        font-size: 0.9rem;
-        color: #444;
+
+    header[data-testid="stHeader"] {{ background: transparent !important; }}
+
+    .stApp {{
+        color: var(--ink);
+        background: var(--base);
+        background-image:
+            radial-gradient(ellipse 55% 40% at 80% -5%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
+            radial-gradient(ellipse 45% 35% at 95% 8%, color-mix(in srgb, var(--accent-warm) 18%, transparent), transparent 65%),
+            radial-gradient(circle at 8% 90%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 35%);
+        transition: background 0.3s ease;
     }}
-    .box-label {{
-        color: {PRIMARY};
-        font-size: 0.78rem;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-    }}
-    .why-box .box-label {{ color: {NEUTRAL}; }}
-    .metric-card {{
-        background-color: {LIGHT};
-        padding: 14px;
-        border-radius: 8px;
-        text-align: center;
-    }}
+
+    .block-container {{ position: relative; z-index: 1; padding-top: 1.6rem; padding-bottom: 3rem; max-width: 1200px; }}
+    h1, h2, h3, p, label, [data-testid="stCaptionContainer"], [data-testid="stMarkdownContainer"] li {{ color: var(--ink); }}
+    h1 {{ letter-spacing: 0.01em; font-weight: 800; }}
+
     section[data-testid="stSidebar"] {{
-        background-color: {LIGHT};
+        background: color-mix(in srgb, var(--base) 96%, black 4%) !important;
+        border-right: 1px solid var(--border);
+        width: 17rem !important;
+        min-width: 17rem !important;
     }}
+    [data-testid="stSidebarUserContent"] {{ padding: 0.6rem 0.7rem !important; }}
+
+    .side-brand {{
+        font-weight: 800;
+        font-size: 1.05rem;
+        color: var(--ink);
+        padding: 0.3rem 0.35rem 1rem 0.35rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 0.8rem;
+    }}
+
+    [data-testid="stSidebar"] .stButton button {{
+        width: 100% !important;
+        background: transparent !important;
+        border: 1px solid transparent !important;
+        color: var(--muted) !important;
+        text-align: left !important;
+        justify-content: flex-start !important;
+        border-radius: 10px !important;
+        padding: 0.55rem 0.8rem !important;
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+        font-size: 0.92rem;
+        transition: all 0.2s ease;
+    }}
+    [data-testid="stSidebar"] .stButton button:hover {{
+        background: var(--glass-hover) !important;
+        color: var(--ink) !important;
+        border-color: var(--border) !important;
+    }}
+    [data-testid="stSidebar"] .stButton button[kind="primary"] {{
+        background: var(--accent-warm) !important;
+        color: #1E2029 !important;
+        border-color: transparent !important;
+        box-shadow: 0 0 16px color-mix(in srgb, var(--accent-warm) 35%, transparent);
+    }}
+    .nav-spacer {{ height: 0.7rem; }}
+
+    .metric-card, .why-box, .insight-box {{
+        background: var(--glass);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }}
+    .metric-card {{ padding: 14px; text-align: center; }}
+    .metric-card:hover {{ transform: translateY(-2px); border-color: var(--accent); }}
+    .insight-box {{ border-left: 4px solid var(--accent); padding: 14px 18px; margin: 12px 0; font-size: 0.95rem; }}
+    .why-box {{ border-style: dashed; padding: 12px 16px; margin: 10px 0 18px 0; font-size: 0.9rem; color: var(--muted); }}
+    .box-label {{ color: var(--accent); font-size: 0.76rem; letter-spacing: 0.05em; text-transform: uppercase; }}
+    .why-box .box-label {{ color: var(--muted); }}
+
+    [data-testid="stDataFrame"], [data-testid="stPlotlyChart"] {{
+        background: var(--glass);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 0.4rem;
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16);
+        backdrop-filter: blur(10px);
+        transition: border-color 0.25s ease;
+    }}
+    [data-testid="stPlotlyChart"]:hover {{ border-color: var(--accent); }}
+
+    [data-testid="stTabs"] button[role="tab"] {{ color: var(--muted) !important; }}
+    [data-testid="stTabs"] button[aria-selected="true"] {{
+        color: var(--ink) !important;
+        border-bottom-color: var(--accent) !important;
+    }}
+
+    [data-testid="stRadio"] label {{ color: var(--ink) !important; }}
     </style>
     """,
     unsafe_allow_html=True,
@@ -123,6 +218,29 @@ def why_box(points):
 def insight_box(points):
     render_box("What this could mean", points, "insight-box")
 
+def style_fig(fig, height=None, legend_title=None):
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Helvetica, Arial, sans-serif", color=theme["ink"]),
+        title_font=dict(size=17, color=theme["accent"]),
+        margin=dict(l=40, r=30, t=60, b=40),
+        legend=dict(font=dict(color=theme["muted"])),
+    )
+    fig.update_xaxes(
+        gridcolor=theme["plot_grid"], zerolinecolor=theme["plot_grid"],
+        tickfont=dict(color=theme["muted"]), title_font=dict(color=theme["ink"]),
+    )
+    fig.update_yaxes(
+        gridcolor=theme["plot_grid"], zerolinecolor=theme["plot_grid"],
+        tickfont=dict(color=theme["muted"]), title_font=dict(color=theme["ink"]),
+    )
+    if height:
+        fig.update_layout(height=height)
+    if legend_title is not None:
+        fig.update_layout(legend_title_text=legend_title)
+    return fig
+
 # ----------------------------------------------------------------------------
 # DATA LOADING
 # ----------------------------------------------------------------------------
@@ -133,8 +251,6 @@ def load_data(path):
     return df
 
 DATA_PATH = "data/data.csv"
-
-st.sidebar.title("EDA Dashboard")
 
 try:
     df = load_data(DATA_PATH)
@@ -177,18 +293,34 @@ PAGES = [
     "F2 as Time",
     "Overall Hypothesis",
 ]
-page = st.sidebar.radio("Sections", PAGES)
 
-st.sidebar.markdown("---")
-st.sidebar.markdown(
-    f"""
-    <div class="metric-card">
-    <b>{df.shape[0]}</b> rows &nbsp;&middot;&nbsp; <b>{df.shape[1]-1}</b> columns<br>
-    <span style="color:{NEUTRAL}; font-size:0.8rem;">F1 groups: M1-M5 &nbsp;|&nbsp; F16: MOB / CPU</span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+with st.sidebar:
+    if st.button(theme["toggle_label"], key="theme_toggle", use_container_width=True):
+        st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
+        st.rerun()
+
+    st.markdown('<div class="side-brand">EDA Dashboard</div>', unsafe_allow_html=True)
+
+    for label in PAGES:
+        is_active = st.session_state.active_page == label
+        if st.button(label, key=f"nav_{label}",
+                     type="primary" if is_active else "secondary",
+                     use_container_width=True):
+            st.session_state.active_page = label
+            st.rerun()
+
+    st.markdown('<div class="nav-spacer"></div>', unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div class="metric-card">
+        <b>{df.shape[0]}</b> rows &nbsp;&middot;&nbsp; <b>{df.shape[1]-1}</b> columns<br>
+        <span style="color:{theme['muted']}; font-size:0.8rem;">F1 groups: M1-M5 &nbsp;|&nbsp; F16: MOB / CPU</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+page = st.session_state.active_page
 
 # ============================================================================
 # PAGE 1 - OVERVIEW
@@ -210,8 +342,8 @@ if page == "Overview":
         [df.shape[0], len(num_cols), len(cat_cols), int(df.isna().sum().sum())],
     ):
         col.markdown(
-            f'<div class="metric-card"><h2 style="margin:0;color:{PRIMARY}">{value}</h2>'
-            f'<span style="color:{NEUTRAL}">{label}</span></div>',
+            f'<div class="metric-card"><h2 style="margin:0;color:{theme["accent"]}">{value}</h2>'
+            f'<span style="color:{theme["muted"]}">{label}</span></div>',
             unsafe_allow_html=True,
         )
 
@@ -228,7 +360,7 @@ if page == "Overview":
                 ("MOB", F16_COLORS["MOB"]), ("CPU", F16_COLORS["CPU"])]
     for col, (label, color) in zip(legend_cols, swatches):
         col.markdown(
-            f'<div style="background:{color};color:white;border-radius:6px;'
+            f'<div style="background:{color};color:white;border-radius:8px;'
             f'padding:8px;text-align:center;font-size:0.85rem;">{label}</div>',
             unsafe_allow_html=True,
         )
@@ -263,10 +395,10 @@ elif page == "Data Quality":
         st.markdown(
             f"""
             <div class="metric-card" style="height:100%;display:flex;flex-direction:column;justify-content:center;">
-            <h1 style="color:{SECONDARY};margin:0;">0</h1>
+            <h1 style="color:{theme['accent']};margin:0;">0</h1>
             <span>total missing values</span>
-            <hr>
-            <h1 style="color:{SECONDARY};margin:0;">{dup_count}</h1>
+            <hr style="border-color:{theme['border']};">
+            <h1 style="color:{theme['accent']};margin:0;">{dup_count}</h1>
             <span>duplicate rows</span>
             </div>
             """,
@@ -571,9 +703,9 @@ elif page == "PCA - All Features at Once":
 
     var1, var2 = pca.explained_variance_ratio_[:2] * 100
     c1, c2, c3 = st.columns(3)
-    c1.markdown(f'<div class="metric-card"><h2 style="color:{PRIMARY}">{var1:.1f}%</h2>PC1 variance explained</div>', unsafe_allow_html=True)
-    c2.markdown(f'<div class="metric-card"><h2 style="color:{SECONDARY}">{var2:.1f}%</h2>PC2 variance explained</div>', unsafe_allow_html=True)
-    c3.markdown(f'<div class="metric-card"><h2 style="color:{ACCENT}">{var1+var2:.1f}%</h2>combined</div>', unsafe_allow_html=True)
+    c1.markdown(f'<div class="metric-card"><h2 style="color:{theme["accent"]}">{var1:.1f}%</h2>PC1 variance explained</div>', unsafe_allow_html=True)
+    c2.markdown(f'<div class="metric-card"><h2 style="color:{theme["accent2"]}">{var2:.1f}%</h2>PC2 variance explained</div>', unsafe_allow_html=True)
+    c3.markdown(f'<div class="metric-card"><h2 style="color:{theme["accent_warm"]}">{var1+var2:.1f}%</h2>combined</div>', unsafe_allow_html=True)
 
     color_by = st.radio("Color points by:", ["F16", "F1"], horizontal=True)
     palette = F16_COLORS if color_by == "F16" else MACHINE_COLORS
