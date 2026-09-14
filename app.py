@@ -666,8 +666,8 @@ elif page == "Relationship Shapes":
     st.plotly_chart(fig, use_container_width=True)
 
     insight_box([
-        "F16 does explain the F18/F19 split, CPU rows sit only on the top line while MOB "
-        "rows are spread across both lines",
+        "F16 only partly explains the split, all CPU rows sit on one line, but MOB rows "
+        "appear on both lines, so F16 alone isn't the full story",
     ])
 
 # ============================================================================
@@ -721,71 +721,48 @@ elif page == "PCA - All Features at Once":
 elif page == "Overall Hypothesis":
     st.title("Putting It All Together - What Is This Data Actually Tracking")
     why_box([
-        "Every earlier section looked at one piece of the puzzle on its own. This section "
-        "lines up all of those pieces to answer the bigger question, what real-world thing "
-        "was this dataset built to measure. This is a hypothesis, the best-supported "
-        "explanation given what was found, not a confirmed fact, since the column names are "
-        "anonymized and there is no metadata to check it against."
+        "This section lines up every earlier finding to guess what the dataset actually "
+        "measures. It only uses what the graphs in this dashboard actually show, and it's "
+        "a hypothesis, not a confirmed fact."
     ])
 
-    st.markdown("### The short version")
+    st.markdown("### Which variables are related")
     st.markdown(
-        f"This looks like a machine health monitoring log: {int(df.shape[0])} readings taken "
-        "from 5 machines (F1) at repeated time steps (F2), tracking each machine's operating "
-        "status, workload, and warning signs over time, similar to what a system would log to "
-        "watch for hardware faults or memory and resource problems before they cause a breakdown."
+        "- F3, F4, F6, F7: nearly identical (r ~ 1.00), same signal on different scales\n"
+        "- F8, F9, F10: nearly identical (r ~ 1.00), same signal on different scales\n"
+        "- F12, F13: identical (r = 1.00), same signal on different scales\n"
+        "- F11: weakly tied to F8/F9/F10 (r ~ -0.28), related but not a duplicate\n"
+        "- F14, F15: related but non-linear (r = 0.92, a curve rather than a line)\n"
+        "- F18, F19: related but not identical (r = 0.93)\n"
+        "- F17: weak relation to everything else, the closest is F14 at r = -0.35, the "
+        "most independent column in the dataset"
     )
 
-    st.markdown("### How each piece supports this")
+    st.markdown("### F1, F2 and F16")
     st.markdown(
-        """
-        | Column(s) | Most likely role | Based on |
-        |---|---|---|
-        | F1 | Machine ID, 5 separate machines | Perfectly even 26 rows each, a tracking ID rather than a random category |
-        | F2 | Time step or reading number | Sequential labels (T1, T2, T3), features change in a consistent order when sorted by it |
-        | F3, F4, F6, F7 | Machine health or status score | Two-hump shape, healthy vs degraded, drops permanently for M3 and M5 partway through |
-        | F8, F9, F10, F12, F13 | Fault or error counters | Normally near zero, occasional large spikes, concentrated on machine M2 |
-        | F11 | Machine-specific stress signal | Only M4 shows a wide spread, looks tied to that one machine's load |
-        | F14 | Shared workload or job cycle | Same up-down wave on every machine at the same steps, a schedule rather than a sensor |
-        | F18 | Per-machine resource baseline | Each machine has its own steady level, but all spike together with F14's workload |
-        | F15, F17 | Independent health or resource readings | Don't match the redundant groups above, separate signals |
-        | F16 | Device or monitoring category, MOB or CPU | Splits F18 vs F19 into two clean lines, a real structural difference |
-        """
+        "- F1: machine ID, 5 machines, 26 rows each\n"
+        "- F2: looks like a step or reading counter (labels T1 to T26), not a measurement\n"
+        "- F16: a device or mode label (MOB / CPU). It only partly explains the F18 vs F19 "
+        "split, CPU rows sit on one line, but MOB rows appear on both lines, so F16 alone "
+        "doesn't fully explain it"
     )
 
-    st.markdown("### The story this tells")
+    st.markdown("### Short version")
     st.markdown(
-        "Reading the sections in order, each row is one machine at one point in time. Most "
-        "of the 16 numeric columns are not 16 separate things, they're a much smaller set of "
-        "real signals, status, faults, workload, baseline, each logged more than once on "
-        "different scales."
-    )
-    st.markdown(
-        "- Machine M2 shows repeated fault spikes, pointing to occasional serious events\n"
-        "- Machines M3 and M5 show a status score that drops and never recovers, consistent "
-        "with a breakdown or shutdown partway through the log\n"
-        "- Machine M4 shows up and down instability instead, more like a recurring issue "
-        "than one clean failure\n"
-        "- All machines share the same workload cycle, so whatever drives it is external to "
-        "any single machine, a shared task, schedule, or system load\n"
-        "- F16 looks like it marks two different device types or monitoring modes, each with "
-        "their own baseline behavior"
-    )
-    st.markdown(
-        "Altogether, this fits a predictive-maintenance style monitoring dataset, the kind of "
-        "data collected to catch a machine, or its memory and resource usage, trending toward "
-        "failure before it actually breaks down."
+        f"Of the {len(num_cols)} numeric columns, most collapse into the handful of related "
+        "groups listed above rather than being independent measurements. F1 and F2 look like "
+        "identifiers, not sensor readings. Machine M2 stands out with the largest fault "
+        "spikes (F8, F9, F10, F12, F13), and machine M4 stands out with the widest spread in "
+        "F11. This is consistent with a machine monitoring log, though the real column names "
+        "and what they represent stay unconfirmed."
     )
 
-    st.markdown("### Where this hypothesis is uncertain")
+    st.markdown("### Where this is uncertain")
     st.markdown(
-        "- The real column names aren't known, so status, fault count, and workload are best-fit labels, not confirmed definitions\n"
-        "- F17 and F15 don't fit neatly into the story above, they may be unrelated sensors, "
-        "or pieces of the story that can't be fully reconstructed from this data alone\n"
-        "- F3's two-hump pattern isn't explained by F16, so at least one more hidden factor "
-        "is still unaccounted for\n"
-        "- With only 130 rows across 5 machines, this is a small sample to generalize from, "
-        "useful for spotting patterns but not for drawing firm conclusions"
+        "- The real column names aren't known, so labels like fault or status are best-fit guesses\n"
+        "- F16 explains only part of the F18/F19 split, the rest is still unexplained\n"
+        "- F15 and F17 don't fit into any of the related groups above\n"
+        "- Only 130 rows across 5 machines, a small sample to generalize from"
     )
 
 # ----------------------------------------------------------------------------
