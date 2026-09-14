@@ -290,7 +290,6 @@ PAGES = [
     "Feature Redundancy",
     "Relationship Shapes",
     "PCA - All Features at Once",
-    "F2 as Time",
     "Overall Hypothesis",
 ]
 
@@ -654,32 +653,21 @@ elif page == "Relationship Shapes":
         "category is splitting the data into two groups",
     ])
 
-    st.markdown("### What explains the F18/F19 split and the F3 bimodal peaks")
+    st.markdown("### What explains the F18/F19 split")
     why_box([
         "F16 is the only other categorical column, so it's the natural candidate to test as "
-        "the hidden driver behind the F18/F19 split and the F3 bimodal shape."
+        "the hidden driver behind the F18/F19 split."
     ])
-    c1, c2 = st.columns(2)
-    with c1:
-        fig = px.scatter(
-            df, x="F18", y="F19", color="F16", color_discrete_map=F16_COLORS,
-            title="F18 vs F19, colored by F16",
-        )
-        fig = style_fig(fig, height=420, legend_title="F16")
-        st.plotly_chart(fig, use_container_width=True)
-    with c2:
-        fig = px.violin(
-            df, x="F16", y="F3", color="F16", color_discrete_map=F16_COLORS,
-            box=True, points=False, title="F3 distribution, split by F16",
-        )
-        fig = style_fig(fig, height=420, legend_title="F16")
-        st.plotly_chart(fig, use_container_width=True)
+    fig = px.scatter(
+        df, x="F18", y="F19", color="F16", color_discrete_map=F16_COLORS,
+        title="F18 vs F19, colored by F16",
+    )
+    fig = style_fig(fig, height=420, legend_title="F16")
+    st.plotly_chart(fig, use_container_width=True)
 
     insight_box([
         "F16 does explain the F18/F19 split, CPU rows sit only on the top line while MOB "
         "rows are spread across both lines",
-        "F16 does not explain F3's two peaks, MOB and CPU both show the exact same two-hump pattern",
-        "So something else, still unknown, is behind the F3 split",
     ])
 
 # ============================================================================
@@ -728,51 +716,7 @@ elif page == "PCA - All Features at Once":
     ])
 
 # ============================================================================
-# PAGE 9 - F2 AS TIME
-# ============================================================================
-elif page == "F2 as Time":
-    st.title("Treating F2 as a Time / Sequence Index")
-    why_box([
-        "F2 looks like a step label, T1, T2, T3, rather than a category. This section tests "
-        "the idea that it encodes sequence or time by extracting its numeric part and "
-        "tracking three representative features, one from each shape family found earlier, "
-        "across that sequence, per machine."
-    ])
-
-    features_to_track = ["F3", "F14", "F18"]
-    df_sorted = df.sort_values(by=["F1", "F2_seq"])
-
-    for feat in features_to_track:
-        fig = go.Figure()
-        for m in ["M1", "M2", "M3", "M4", "M5"]:
-            sub = df_sorted[df_sorted["F1"] == m]
-            fig.add_trace(go.Scatter(
-                x=sub["F2_seq"], y=sub[feat], mode="lines+markers",
-                name=m, line=dict(color=MACHINE_COLORS[m], width=2),
-                marker=dict(size=5),
-            ))
-        fig.update_layout(title=f"{feat} across sequence steps (F2), by machine",
-                          xaxis_title="Sequence index (F2)", yaxis_title=feat)
-        fig = style_fig(fig, height=380, legend_title="F1")
-        st.plotly_chart(fig, use_container_width=True)
-
-    insight_box([
-        "F3, status: M1 and M2 stay healthy the whole time, around 95. M3 and M5 drop hard "
-        "around step 11 and never come back up, which looks like a breakdown that doesn't "
-        "recover. M4 keeps going up and down, more like a recurring problem than one big failure",
-        "F14, workload: every machine rises and falls at the exact same steps. Independent "
-        "machines wouldn't naturally line up like that on their own, so this is probably a "
-        "shared schedule or outside workload hitting all of them together",
-        "F18, baseline: each machine sits at its own steady level, M5 highest and M3 lowest, "
-        "and all of them spike at the same moments F14 spikes, so F18 looks like each "
-        "machine's personal baseline reacting to that same shared workload",
-        "Put together, this is the strongest sign that F2 really does represent time, and "
-        "that the machines share an outside workload even while some of them fail on their "
-        "own separate timeline",
-    ])
-
-# ============================================================================
-# PAGE 10 - OVERALL HYPOTHESIS
+# PAGE 9 - OVERALL HYPOTHESIS
 # ============================================================================
 elif page == "Overall Hypothesis":
     st.title("Putting It All Together - What Is This Data Actually Tracking")
