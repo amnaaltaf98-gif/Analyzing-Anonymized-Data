@@ -705,11 +705,45 @@ elif page == "PCA - All Features at Once":
     fig = style_fig(fig, height=500, legend_title=color_by)
     st.plotly_chart(fig, use_container_width=True)
 
+    loadings = pd.DataFrame(pca.components_.T, index=num_cols, columns=["PC1", "PC2"])
+
+    def top_features(col, n=4):
+        s = loadings[col]
+        top_idx = s.abs().sort_values(ascending=False).head(n).index
+        ordered = [c for c in num_cols if c in top_idx]
+        pos = [f for f in ordered if s[f] > 0]
+        neg = [f for f in ordered if s[f] < 0]
+        return pos, neg
+
+    pc1_pos, pc1_neg = top_features("PC1", n=5)
+    pc2_pos, pc2_neg = top_features("PC2", n=6)
+
+    def fmt(features):
+        return ", ".join(features)
+
+    pc1_line = f"PC1 ({var1:.1f}% of the spread): almost entirely {fmt(pc1_pos)}"
+    if pc1_neg:
+        pc1_line += f", pulled the other way by {fmt(pc1_neg)}"
+    pc2_line = f"PC2 ({var2:.1f}% of the spread): {fmt(pc2_pos)} move one way"
+    if pc2_neg:
+        pc2_line += f", while {fmt(pc2_neg)} move the opposite way"
+
+    st.markdown("### What is actually driving PC1 and PC2")
+    why_box([
+        "The Feature Redundancy heatmaps only ever compare two columns at a time. This is "
+        "different, it shows which columns combine to build each PCA axis using all 16 "
+        "columns at once, which is a genuinely multivariate view rather than a pairwise one."
+    ])
+    st.markdown(f"- {pc1_line}\n- {pc2_line}")
+
     insight_box([
         f"Just two combined axes, out of the original 16 columns, capture {var1+var2:.1f} "
         "percent of everything happening in the data",
         "That's a strong sign a lot of those columns are repeating the same information on "
         "different scales, matching what the redundancy sections found",
+        "PC2 is the clearest multivariate pattern here, F14 and F15 move one way while F18, "
+        "F19, F12 and F13 move the other way, together, on a single axis, a combination the "
+        "pairwise heatmaps don't show directly",
         "When colored by F16, CPU and MOB form separate clusters, so F16 is a real "
         "structural difference, not just a label",
         "Switching the color to F1 shows whether individual machines cluster the same way",
