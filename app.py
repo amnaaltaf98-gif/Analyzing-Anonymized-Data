@@ -367,6 +367,16 @@ if page == "Overview":
     st.markdown("### Raw data preview")
     st.dataframe(df.drop(columns=["F2_seq"]).head(10), use_container_width=True)
 
+    st.markdown("### Summary statistics")
+    st.markdown("Mean, spread, and range for each of the 16 numeric columns.")
+    summary = df[num_cols].describe().T.round(2)
+    summary = summary.rename(columns={
+        "count": "count", "mean": "mean", "std": "std dev",
+        "min": "min", "25%": "25th pct", "50%": "median",
+        "75%": "75th pct", "max": "max",
+    })
+    st.dataframe(summary, use_container_width=True)
+
 # ============================================================================
 # PAGE 2 - DATA QUALITY
 # ============================================================================
