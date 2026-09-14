@@ -676,10 +676,8 @@ elif page == "Relationship Shapes":
 elif page == "PCA - All Features at Once":
     st.title("Multivariate View - PCA")
     why_box([
-        "Instead of looking at features two at a time, PCA compresses all 16 numeric "
-        "columns at once into 2 new axes that capture as much of the original spread as "
-        "possible, which is a fast way to check for redundancy and hidden grouping across "
-        "the whole dataset in a single plot."
+        "PCA combines all 16 columns into 2 new axes that capture most of the spread, a "
+        "fast way to check for redundancy across everything at once, not just two columns at a time."
     ])
 
     X_scaled = StandardScaler().fit_transform(df[num_cols])
@@ -730,23 +728,17 @@ elif page == "PCA - All Features at Once":
 
     st.markdown("### What is actually driving PC1 and PC2")
     why_box([
-        "The Feature Redundancy heatmaps only ever compare two columns at a time. This is "
-        "different, it shows which columns combine to build each PCA axis using all 16 "
-        "columns at once, which is a genuinely multivariate view rather than a pairwise one."
+        "Correlation heatmaps compare two columns at a time. This shows which columns "
+        "combine into each axis using all 16 at once."
     ])
     st.markdown(f"- {pc1_line}\n- {pc2_line}")
 
     insight_box([
-        f"Just two combined axes, out of the original 16 columns, capture {var1+var2:.1f} "
-        "percent of everything happening in the data",
-        "That's a strong sign a lot of those columns are repeating the same information on "
-        "different scales, matching what the redundancy sections found",
-        "PC2 is the clearest multivariate pattern here, F14 and F15 move one way while F18, "
-        "F19, F12 and F13 move the other way, together, on a single axis, a combination the "
-        "pairwise heatmaps don't show directly",
-        "When colored by F16, CPU and MOB form separate clusters, so F16 is a real "
-        "structural difference, not just a label",
-        "Switching the color to F1 shows whether individual machines cluster the same way",
+        f"Two axes capture {var1+var2:.1f}% of everything in the data",
+        "That means a lot of these columns repeat the same information on different scales",
+        "PC2 mixes F14 and F15 against F12, F13, F18 and F19, a pattern the pairwise heatmaps don't show",
+        "CPU tends to sit lower on PC2 than MOB, but the two overlap a lot, they don't split into separate clusters",
+        "Switch to F1 to see if machines separate instead",
     ])
 
 # ============================================================================
