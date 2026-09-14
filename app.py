@@ -3,6 +3,8 @@ Anonymized Sensor Dataset - Exploratory Data Analysis Dashboard
 Built from a raw EDA notebook. Single consistent color scheme throughout.
 """
 
+import utils.transport
+import utils.session
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -366,6 +368,16 @@ if page == "Overview":
 
     st.markdown("### Raw data preview")
     st.dataframe(df.drop(columns=["F2_seq"]).head(10), use_container_width=True)
+
+    st.markdown("### Summary statistics")
+    st.markdown("Mean, spread, and range for each of the 16 numeric columns.")
+    summary = df[num_cols].describe().T.round(2)
+    summary = summary.rename(columns={
+        "count": "count", "mean": "mean", "std": "std dev",
+        "min": "min", "25%": "25th pct", "50%": "median",
+        "75%": "75th pct", "max": "max",
+    })
+    st.dataframe(summary, use_container_width=True)
 
 # ============================================================================
 # PAGE 2 - DATA QUALITY
